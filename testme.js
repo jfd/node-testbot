@@ -24,15 +24,15 @@ const RE_TEST_NAME    = /^(at|t)est_([A-Za-z0-9_]*)$/;
  */
 function main(args) {
   var filter = [],
-      path = './';
-      
+      path = process.cwd() + '/';
+
   args.shift();
   args.shift();
   
   if (args.length > 0) {
     path = args.shift();
     if (path.substr(0) != '/' && path.substr(0) != '~') {
-      path = './' + path;
+      path = process.cwd() + '/' + path;
     }
     if (path.substr(path.length - 1) != '/') {
       path = path + '/'
