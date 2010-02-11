@@ -264,7 +264,7 @@ function create_async_constructor(async, timeout, fn) {
       // ´assert´ module. 
       function global_error_handle(err) {
         if (err.name == 'AssertionError') {
-          result.failure = err.message;
+          result.failure = syncerr.message || syncerr.actual;
         } else {
           result.error = err.toString();
         }
@@ -300,7 +300,7 @@ function create_async_constructor(async, timeout, fn) {
         fn();
       } catch(syncerr) {
         if (syncerr.name == 'AssertionError') {
-          result.failure = syncerr.message;
+          result.failure = syncerr.message || syncerr.actual;
         } else {
           result.error = syncerr.toString();
         }
