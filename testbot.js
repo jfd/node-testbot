@@ -7,6 +7,7 @@
 // Copyright (c) 2010 Johan Dahlberg
 //
 var sys     = require('sys'),
+    path    = require('path'),
     posix   = require("posix"),
     events  = require("events");
 
@@ -18,33 +19,62 @@ const DEFAULT_TIMEOUT = 4000;
 const RE_FILE_NAME    = /^test_([A-Za-z0-9]*).js$/;
 const RE_TEST_NAME    = /^(at|t)est_([A-Za-z0-9_]*)$/;
 
+var options = {};
 
 /**
  *  Run all tests found in 
  */
 function main(args) {
-  var filter = [],
-      path = process.cwd() + '/';
+  var sources = [],
+      modules = [];
 
-  args.shift();
-  args.shift();
-  
   if (args.length > 0) {
-    path = args.shift();
-    if (path.substr(0) != '/' && path.substr(0) != '~') {
-      path = process.cwd() + '/' + path;
+    var arg         = null,
+        sourcepath  = null;
+        
+    while ((arg = args.shift())) {
+      if (/^--/.test(arg)) {
+        options[arg.substr(2)] = true;
+
+      } else {
+        if (/^(\/|\~|\.)/.test(arg)) {
+          sourcepath = arg;
+        } else {
+          sourcepath = process.cwd() + '/' + arg;
+        }
+        
+        sources.push(/\.js$/.test(sourcepath) ? 
+                        file_source(sourcepath) : 
+                        directory_source(sourcepath));
+      }
     }
-    if (path.substr(path.length - 1) != '/') {
-      path = path + '/'
+
+  } else {
+    sources.push(directory_source(process.cwd() + '/'));
+  }
+  
+  function run(modules) {
+    if (modules.length) {
+      sys.puts('Testbot ' + VERSION + ' - Test suite for node.js');
+      sys.puts('Found ' + modules.length + ' available module(s)\n');
+      var suite = build_test_suite(modules);
+      run_tests(suite, show_result);
+    } else {
+      sys.puts('Usage: testbot [testdir], [testmodule]');
     }
-  } 
+  }
   
-  get_available_modules(path, filter, function(modules) {
-    sys.puts('Found ' + modules.length + ' available module(s) in ' + path + '...\n');
-    var suite = build_test_suite(modules);
-    run_tests(suite, show_result);
-  });
+  // process all sources 
+  function process_sources(modules) {
+    var source = sources.shift()
+    if (source) {
+      source(modules, process_sources);
+    } else {
+      run(modules);
+    }
+  }
   
+  process_sources([]);
 }
 
 function build_test_suite(modules) {
@@ -396,18 +426,36 @@ function get_fixture_stats(fixture) {
   return result;
 }
 
-function get_available_modules(path, filter, callback) {
- posix.readdir(path).addCallback(function(files) {
-   var result = [];
-   files.forEach(function(file) {
-     var m = file.match(RE_FILE_NAME);
-     if (m && (filter.length == 0 || filter.indexOf(m[1]) !== -1)) {
-       var modname = file.substr(file, file.length - 3);
-       result.push({ path: path + modname, name: m[1] });
-     }
-   });
-   callback(result);
- });
+function file_source(file_path) {
+  return function(modules, callback) {
+    posix.stat(file_path).addCallback(function(files) {
+      var m = path.basename(file_path).match(RE_FILE_NAME);
+      if (m) {
+        var modname = path.basename(file_path, '.js');
+        modules.push({ path: path.join(path.dirname(file_path), modname), name: m[1] });
+      }
+      callback(modules);
+    }).addErrback(function(e) {
+      callback(modules);
+    });  
+  }
 }
 
-main(process.ARGV.concat([]));
+function directory_source(dir_path) {
+  return function(modules, callback) {
+    posix.readdir(dir_path).addCallback(function(files) {
+      files.forEach(function(file) {
+        var m = file.match(RE_FILE_NAME);
+        if (m) {
+          var modname = path.basename(file, '.js');
+          modules.push({ path: path.join(dir_path, modname), name: m[1] });
+        }
+      });
+      callback(modules);
+    }).addErrback(function() {
+      callback(modules);
+    });  
+  }
+}
+
+main(process.ARGV.slice(2));
