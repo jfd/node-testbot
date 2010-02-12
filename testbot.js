@@ -256,10 +256,11 @@ function run_tests(suite, callback) {
           // Setup didn't go so well.
           case_result.status = 'setup-failed';
           case_result.reason = r.error || r.failure.message;
-        } 
-        
-        // Test case is done. 
-        case_done();
+          case_done();
+        }  else {
+          // Test case is done. 
+          process.nextTick(next_test);
+        }
       });
     } else {
       // No setup required for test case. Start running tests.
