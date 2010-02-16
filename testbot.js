@@ -213,11 +213,7 @@ function run_tests(suite, callback) {
           
           // Print a quick report on screen on failure
           if (test_result.status != 'success') {
-            sys.puts(test_result.status + ' "' + 
-                     testcase.name + '/' + 
-                     test_result.name + '": ' + 
-                     test_result.reason
-            );
+            show_test_result(test_result);
           }
           
           // Push report to case result.
@@ -330,7 +326,9 @@ function create_async_constructor(async, timeout, fn) {
       try {
         fn();
       } catch(syncerr) {
-        if (syncerr.name == 'AssertionError') {
+        if (!syncerr) {
+          result.error = '<undefined>';
+        } else if (syncerr.name == 'AssertionError') {
           result.failure = syncerr.message || syncerr.actual;
         } else {
           result.error = syncerr.toString();
@@ -342,10 +340,25 @@ function create_async_constructor(async, timeout, fn) {
   }
 }
 
+function show_test_result(result) {
+  var c = result.status == 'error' ? '31' : '33';
+  sys.print(
+    '\033[' + c + 'm' +
+    result.status + ' "' + 
+    result.name + '": ' + 
+    result.reason +
+    '\033[0m\n'
+  );
+}
+
 function show_fixture_result(fixture) {
   switch (fixture.status) {
     case 'setup-failed':
-      sys.puts('Fixture setup failed and could therefor not be tested: ' + fixture.reason);
+      sys.print(
+        '\033[13m' +
+        'Fixture setup failed and could therefor not be tested: ' + fixture.reason +
+        '\033[0m\n'
+      );
       break;
       
     case 'teardown-failed':
@@ -358,11 +371,13 @@ function show_fixture_result(fixture) {
       
     default:
       var stats = get_fixture_stats(fixture);
-      sys.puts(
+      sys.print(
+        '\033[32m' +
         'Tests: ' + stats.tests + 
         ', Failures: ' +  stats.failures + 
         ', Errors: ' + stats.errors + 
-        ', time: ' + (stats.time / 1000) + 's'
+        ', time: ' + (stats.time / 1000) + 's' +
+        '\033[0m\n'
       );
       break;
   }
