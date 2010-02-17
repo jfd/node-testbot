@@ -290,8 +290,10 @@ function create_async_constructor(async, timeout, fn) {
       // Catch all global uncaught exceptions. This is probably raised by the 
       // ´assert´ module. 
       function global_error_handle(err) {
-        if (err.name == 'AssertionError') {
-          result.failure = syncerr.message || syncerr.actual;
+        if (!err) {
+          result.error = '<undefined>';
+        } else if (err.name == 'AssertionError') {
+          result.failure = err.message || syncerr.actual;
         } else {
           result.error = err.toString();
         }
